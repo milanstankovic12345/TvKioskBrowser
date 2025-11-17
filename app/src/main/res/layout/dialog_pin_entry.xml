@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@android:color/white"
+    android:minWidth="300dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enter PIN"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#000000"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="16dp">
+
+        <EditText
+            android:id="@+id/pinDigit1"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:inputType="number"
+            android:maxLength="1"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:textColor="#000000"
+            android:background="@drawable/pin_digit_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:importantForAccessibility="yes"
+            android:contentDescription="PIN digit 1"
+            android:nextFocusRight="@id/pinDigit2"
+            android:layout_marginEnd="8dp" />
+
+        <EditText
+            android:id="@+id/pinDigit2"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:inputType="number"
+            android:maxLength="1"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:textColor="#000000"
+            android:background="@drawable/pin_digit_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:importantForAccessibility="yes"
+            android:contentDescription="PIN digit 2"
+            android:nextFocusLeft="@id/pinDigit1"
+            android:nextFocusRight="@id/pinDigit3"
+            android:layout_marginEnd="8dp" />
+
+        <EditText
+            android:id="@+id/pinDigit3"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:inputType="number"
+            android:maxLength="1"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:textColor="#000000"
+            android:background="@drawable/pin_digit_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:importantForAccessibility="yes"
+            android:contentDescription="PIN digit 3"
+            android:nextFocusLeft="@id/pinDigit2"
+            android:nextFocusRight="@id/pinDigit4"
+            android:layout_marginEnd="8dp" />
+
+        <EditText
+            android:id="@+id/pinDigit4"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:inputType="number"
+            android:maxLength="1"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:textColor="#000000"
+            android:background="@drawable/pin_digit_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:importantForAccessibility="yes"
+            android:contentDescription="PIN digit 4"
+            android:nextFocusLeft="@id/pinDigit3" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/pinError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#FF0000"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:visibility="gone"
+        android:layout_marginBottom="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/pinCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="#000000"
+            android:background="@drawable/focused_button"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:importantForAccessibility="yes"
+            android:contentDescription="Cancel PIN entry"
+            android:nextFocusRight="@id/pinSubmit"
+            android:layout_marginEnd="12dp" />
+
+        <Button
+            android:id="@+id/pinSubmit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OK"
+            android:textColor="#000000"
+            android:background="@drawable/focused_button"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:importantForAccessibility="yes"
+            android:contentDescription="Submit PIN"
+            android:nextFocusLeft="@id/pinCancel" />
+    </LinearLayout>
+
+</LinearLayout>
+
