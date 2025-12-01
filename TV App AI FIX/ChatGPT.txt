@@ -1,0 +1,274 @@
+Nice — thanks for the clear problem statement. I don’t have your logs, so I’ll explain the most likely root causes for the different Android versions and give specific, copy-pasteable fixes you can apply and test. I’ll flag which fixes are required vs recommended, and I’ll include example manifest entries and small code snippets you can drop into your project.
+
+Short summary (TL;DR)
+Android 8 (Oreo): your current approach happened to work on that device (maybe the display OEM allowed the activity-start behavior or your app was the default launcher / device owner).
+
+
+Android 9 (Pie): most likely your app is being started from the background after power-cycle and either (A) the system blocks starting an Activity from a background receiver (background-start restriction introduced around Android O/P), or (B) you initialize WebView too early / in a non-UI context after boot and the WebView provider isn’t ready → crash.
+
+
+Android 11 (R): stricter platform changes (scoped storage, WebView provider changes, and even stricter background-start rules) likely cause immediate crash at launch if your app relies on file access, instantiates WebView incorrectly, or targets an API level that triggers behavior changes you didn’t handle.
+
+
+Below I list probable causes in order of likelihood and then give concrete fixes with manifest and code examples.
+
+Probable causes (what’s actually happening)
+1. Background activity launch restrictions (very likely)
+Since Android Oreo (8.0) Google started restricting apps from launching activities from the background. Those restrictions got stricter in later Android releases.
+
+
+If your app uses a BOOT_COMPLETED BroadcastReceiver that calls startActivity(...) to open your browser Activity on boot/power-on, the system may allow it on Android 8 (depending on OEM) but will block or crash on Android 9/11 unless your app is a launcher (HOME) app or a device-owner / kiosk app or the activity launch happens from a foreground context.
+
+
+Symptom: app seems to start automatically but after power cycle it crashes or is killed and cannot be reopened.
+
+
+2. WebView initialization / provider readiness (very likely)
+WebView is provided by a separate package (Android System WebView / Chrome). On some devices the WebView provider may not yet be ready during very early boot, or the WebView initialization path your app uses (e.g., creating new WebView(context) from a Service/Receiver or from non-UI thread) can cause exceptions on Android 9/11.
+
+
+Symptom: crash right after launch, especially if you create a WebView before an Activity is visible or on a non-UI thread, or if you use the Application context incorrectly for WebView.
+
+
+3. Scoped storage / file access (possible)
+If your app loads local files (e.g. file:// URIs from external storage) the Android 11 scoped storage changes can cause exceptions or failures that may look like crashes unless handled.
+
+
+Symptom: immediate crash when loading resource from disk or when using file URLs.
+
+
+4. Cleartext/network security or HTTP -> HTTPS issues (less likely to crash)
+Android 9 blocks cleartext HTTP by default if targetSdkVersion >= 28. That won’t usually crash the app; it will just prevent the page from loading.
+
+
+5. Target SDK mismatches and OEM WebView bugs (possible)
+Targeting old SDKs or relying on device-specific WebView behavior can produce crashes on certain OEM firmware or later OS versions.
+
+
+
+Concrete fixes (apply these; copy/paste friendly)
+I’ll give fixes in priority order. Apply 1 & 2 first, then 3–5 as needed.
+
+A — Make the app a Launcher (HOME) or run it as Device Owner / Kiosk
+Why: the system will not allow ordinary apps to start activities from the background after boot. A launcher or device-owner app is allowed to show UI at boot and to lock down the device (kiosk). For a display that should always show your page, launcher/device-owner is the correct approach.
+Option A1 — Declare the app as a home/launcher (recommended for kiosk displays)
+ Add this activity intent filter to your main activity:
+<activity android:name=".MainActivity"
+    android:label="@string/app_name"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.HOME" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+</activity>
+
+When the display boots the system will start the default launcher. After install set your app as the default home app (either manually in Settings or via MDM/ADB if you control device).
+Option A2 — Make the app device owner (kiosk mode)
+ If you control devices you can set the app as device owner with adb (factory-reset device first):
+adb shell dpm set-device-owner com.your.package/.YourDeviceAdminReceiver
+
+Then use DevicePolicyManager.startLockTask() and other device-owner APIs to auto-start and pin your app. (This approach is common for commercial displays and is the most robust.)
+Why this helps: Default launcher or device-owner status avoids the “not allowed to start activity from background” rule.
+
+B — Don’t start Activity directly from BOOT_RECEIVED; use allowed patterns
+If you cannot be a launcher or device owner, you must not attempt to startActivity() directly from BOOT_COMPLETED. Instead:
+Register for BOOT_COMPLETED in manifest:
+
+
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+<receiver android:name=".BootReceiver"
+          android:enabled="true"
+          android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+    </intent-filter>
+</receiver>
+
+In BootReceiver.onReceive() start a foreground service (allowed pattern) and have that service show a notification and then, if allowed, bring the activity to front. Example:
+
+
+public class BootReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        Intent svc = new Intent(context, BootLaunchService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(svc);
+        } else {
+            context.startService(svc);
+        }
+    }
+}
+
+BootLaunchService should call startForeground() and then, once the service is running and you detect you are in the foreground, you can attempt startActivity() from the service’s context — note: modern Android may still block activity starts from background; this approach increases chance of working but is not a guarantee unless you are device-owner/launcher.
+But: the only robust solution is to be launcher or device-owner. Use the foreground service route only as a fallback and test thoroughly.
+
+C — Initialize WebView safely (must do)
+Rules:
+Create any WebView only from an Activity’s UI thread (do not create it inside a BroadcastReceiver or Service with a non-UI context).
+
+
+Don’t call new WebView(getApplicationContext()) — use the Activity context (e.g. new WebView(this) inside Activity.onCreate()).
+
+
+Delay creating WebView until the Activity is visible/onCreate() has run.
+
+
+If you need to warm WebView earlier, use AndroidX WebKit (WebViewCompat), and check the provider:
+
+
+Example safe initialization:
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    // Must run on UI thread and use Activity context
+    WebView webView = findViewById(R.id.webview);
+    webView.getSettings().setJavaScriptEnabled(true);
+    webView.setWebViewClient(new WebViewClient());
+    webView.loadUrl("https://your.url");
+}
+
+If you are preparing WebView in Application.onCreate() (not recommended), limit to WebView.setWebContentsDebuggingEnabled() and do not instantiate the WebView object there.
+Check WebView provider availability before using:
+PackageInfo pkg = WebViewCompat.getCurrentWebViewPackage(this);
+if (pkg == null) {
+    // WebView provider not ready — show a retry UI or delay initialization
+}
+
+Android 9/11 devices sometimes update WebView via Play Store and it may not be immediately available at early boot — adding this guard prevents a crash.
+
+D — Handle file access / storage (if you use local files)
+If you load local HTML via external storage, Android 11 enforces scoped storage. Fixes:
+Put web assets inside assets/ or res/raw/ and load via file:///android_asset/your.html or file:///android_res/raw/... (works across OS versions).
+
+
+If you must use external storage, adopt the scoped storage APIs (Storage Access Framework) or request MANAGE_EXTERNAL_STORAGE only if absolutely required (Play Store restrictions apply).
+
+
+Recommended: bundle the page or host it over HTTPS. Avoid file I/O that relies on legacy external storage.
+
+E — Network security (HTTP vs HTTPS)
+If your url is http:// and your targetSdkVersion >= 28, Android 9+ blocks cleartext by default. This will not usually crash the app but will prevent page load. Fix by either:
+Serve pages over HTTPS, or
+
+
+Add network_security_config.xml and allow cleartext for the domain.
+
+
+Example network_security_config.xml:
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">yourdomain.local</domain>
+    </domain-config>
+</network-security-config>
+
+Reference in manifest:
+<application
+    android:networkSecurityConfig="@xml/network_security_config"
+    ...>
+
+
+F — Target SDK and runtime permissions
+Set targetSdkVersion to a modern level and update code for the behavior changes. Don’t rely on old behavior by lowering targetSdkVersion as a permanent solution — use it only temporarily for debugging.
+
+
+For Android 11, request runtime permissions correctly and handle lifecycle changes.
+
+
+
+Example: minimal robust approach for a kiosk display
+Make your app the default launcher (best for displays).
+
+
+Use an Activity that is FULLSCREEN, immersive, and contains a WebView created in onCreate.
+
+
+Persist the URL in SharedPreferences. On boot, the system will start your launcher Activity automatically.
+
+
+Use WebView.setWebContentsDebuggingEnabled(false) for production.
+
+
+Activity example (outline):
+public class KioskActivity extends Activity {
+    WebView webView;
+    @Override
+    protected void onCreate(Bundle s) {
+        super.onCreate(s);
+        setContentView(R.layout.activity_kiosk);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        webView = findViewById(R.id.webview);
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.setWebViewClient(new WebViewClient(){});
+        String url = getSavedUrl();
+        webView.loadUrl(url);
+    }
+    @Override
+    public void onResume(){
+        super.onResume();
+        enterImmersiveMode();
+    }
+    private void enterImmersiveMode() {
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            | View.SYSTEM_UI_FLAG_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+    }
+}
+
+Manifest: add the HOME intent filter (shown earlier) and RECEIVE_BOOT_COMPLETED if you also want a receiver fallback.
+
+Debugging tips — what to look for in logcat
+When you reproduce the crash, capture logcat and look for:
+java.lang.IllegalStateException: Not allowed to start activity ... — indicates background start blocked.
+
+
+java.lang.RuntimeException: WebViewFactory or Failed to load WebView provider — indicates WebView provider / init problem.
+
+
+SecurityException when accessing files — indicates permission/scoped storage issues.
+
+
+Any NullPointerException stack trace in your app classes — could be lifecycle race on boot.
+
+
+If you paste one or two representative logcat stack traces here I can precisely point to the offending line and give the exact change.
+
+Practical checklist (apply in this order)
+If possible make app the default launcher on the display (recommended). This solves most boot/start issues.
+
+
+Move all WebView creation into Activity.onCreate() and only use Activity context.
+
+
+In BootReceiver do not start an Activity directly — start a foreground service or rely on being launcher/device-owner.
+
+
+Serve content over HTTPS or add network_security_config if you must use HTTP.
+
+
+If you read files from external storage, move them to assets/ or adopt scoped storage.
+
+
+Test on an actual device/emulator with Android 9 and 11; capture logcat errors and iterate.
+
+
+
+Why Android 8 worked but 9 and 11 didn't — final plain English
+Android 8 devices and some OEM firmwares sometimes still allow background activity starts or have slightly different timing/initialization for WebView; later Android versions (9 and 11) tightened both background start rules and WebView/OS service initialization. If your app assumes it can start UI very early (from a BOOT_COMPLETED receiver) or instantiates WebView from a non-UI context, that worked on one OS/OEM combination but fails or crashes on stricter versions.
+
+
+
+If you want I can:
+Provide a patched minimal project (manifest + MainActivity + BootReceiver + Service) to copy into your codebase, or
+
+
+Analyze a logcat stack trace you paste here and point exactly to the failing lines and a one-line fix.
+
+
+Which of those would help most next?
+
