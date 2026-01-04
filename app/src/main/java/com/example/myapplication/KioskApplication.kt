@@ -12,21 +12,23 @@ import android.webkit.WebView
 class KioskApplication : Application() {
     companion object {
         private const val TAG = "KioskApp"
+        var isWebViewAvailable: Boolean = false
+            private set
     }
 
     override fun onCreate() {
         super.onCreate()
         
         // CRITICAL FIX: Android 9+ WebView multi-process isolation
-        initializeWebView()
+        isWebViewAvailable = initializeWebView()
         
         // Optional: Global crash handler
         setupCrashRecovery()
         
-        Log.d(TAG, "Kiosk initialized on Android ${Build.VERSION.SDK_INT}")
+        Log.d(TAG, "Kiosk initialized on Android ${Build.VERSION.SDK_INT}, WebView available: $isWebViewAvailable")
     }
 
-    private fun initializeWebView() {
+    private fun initializeWebView(): Boolean {
         try {
             // Android 9+ requires unique data directory per process
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -41,9 +43,11 @@ class KioskApplication : Application() {
             WebView(this).destroy()
             
             Log.d(TAG, "WebView initialized successfully")
+            return true
             
         } catch (e: Exception) {
             Log.e(TAG, "WebView init error: ${e.message}", e)
+            return false
         }
     }
 

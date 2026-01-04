@@ -78,21 +78,13 @@ class MainActivity : AppCompatActivity() {
         private const val DEFAULT_PIN = "1234"
         
         private val DEFAULT_RECOMMENDED_SITES = listOf(
-//            RecommendedSite("Google Gemini", "https://gemini.google.com"),
-//            RecommendedSite("Gmail", "https://mail.google.com"),
-//            RecommendedSite("Reddit", "https://www.reddit.com"),
-//            RecommendedSite("Wikipedia", "https://www.wikipedia.org"),
-//            RecommendedSite("YouTube", "https://www.youtube.com")
+            RecommendedSite("Google Gemini", "https://gemini.google.com"),
+            RecommendedSite("Gmail", "https://mail.google.com"),
+            RecommendedSite("Reddit", "https://www.reddit.com"),
+            RecommendedSite("Wikipedia", "https://www.wikipedia.org"),
+            RecommendedSite("YouTube", "https://www.youtube.com")
 
-            RecommendedSite("Predmontaza L2", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo2Lin2Predmontaza?barChart=1"),
-            RecommendedSite("Montaza L2", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo2Lin2Montaza?barChart=1"),
-            RecommendedSite("Prevzem L2", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo2Lin2Prevzem?barChart=1"),
-            RecommendedSite("Predmontaza L4", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo2Lin4Predmontaza?barChart=1"),
-            RecommendedSite("Montaza L4", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo2Lin4Montaza?barChart=1"),
-            RecommendedSite("Prevzem L4", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo2Lin4Prevzem?barChart=1"),
-            RecommendedSite("Predmontaza1 L3", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo3Lin3Predmontaza1?barChart=1"),
-            RecommendedSite("Predmontaza2 L3", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo3Lin3Predmontaza2?barChart=1"),
-            RecommendedSite("Montaza L3", "http://itprod.ad.gorenje.si/VpogledLinijeValjevo/Valjevo3Lin3?barChart=1")
+            
         )
     }
     
@@ -156,7 +148,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         
         try {
-            setContentView(R.layout.activity_main)
+            // CRITICAL: Check if WebView is available before trying to use it
+            if (!KioskApplication.isWebViewAvailable) {
+                android.util.Log.e("MainActivity", "WebView not available from Application init, showing error")
+                showErrorLayout("System WebView is missing or incompatible.")
+                return
+            }
+
+            try {
+                setContentView(R.layout.activity_main)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Error inflating layout (likely WebView missing): ${e.message}", e)
+                showErrorLayout("System WebView is missing.\n${e.message}")
+                return
+            }
             
             // Set up immersive full-screen mode for Android TV (after setContentView)
             setupImmersiveMode()
@@ -173,7 +178,7 @@ class MainActivity : AppCompatActivity() {
             seekZoom = findViewById(R.id.seekZoom)
             textZoomValue = findViewById(R.id.textZoomValue)
             recommendedSitesContainer = findViewById(R.id.recommendedSitesContainer)
-
+            
             // Load saved preferences if present
             loadPreferences()
             
@@ -197,7 +202,21 @@ class MainActivity : AppCompatActivity() {
             android.util.Log.d("MainActivity", "App initialized successfully")
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error in onCreate: ${e.message}", e)
-            throw e
+            // Fallback for any other crash
+            showErrorLayout("Critical Error:\n${e.message}")
+        }
+    }
+
+    private fun showErrorLayout(errorMessage: String) {
+        try {
+            setContentView(R.layout.activity_error)
+            findViewById<TextView>(R.id.errorDescription)?.text = errorMessage
+            
+            // Keep screen on even in error state (it's a kiosk)
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } catch (e: Exception) {
+            // If even the error layout fails (unlikely), just log
+            android.util.Log.e("MainActivity", "Failed to show error layout", e)
         }
     }
     
@@ -1098,14 +1117,58 @@ class MainActivity : AppCompatActivity() {
         // Recommended sites are loaded separately in setupRecommendedSites()
     }
     
+    private fun hashPin(pin: String): String {
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(pin.toByteArray(java.nio.charset.StandardCharsets.UTF_8))
+            val hexString = StringBuilder()
+            for (b in hash) {
+                val hex = Integer.toHexString(0xff and b.toInt())
+                if (hex.length == 1) hexString.append('0')
+                hexString.append(hex)
+            }
+            hexString.toString()
+        } catch (e: Exception) {
+            // Fallback (should not happen for SHA-256)
+            pin
+        }
+    }
+
     private fun getPin(): String {
         val prefs = getSharedPreferences("display_prefs", MODE_PRIVATE)
-        return prefs.getString("admin_pin", DEFAULT_PIN) ?: DEFAULT_PIN
+        
+        // Check for hashed PIN first
+        val hashedPin = prefs.getString("admin_pin_hash", null)
+        if (!hashedPin.isNullOrEmpty()) {
+            return hashedPin
+        }
+        
+        // Migration: check for legacy plain PIN
+        val legacyPin = prefs.getString("admin_pin", null)
+        if (!legacyPin.isNullOrEmpty()) {
+            // Hash and save it to new key
+            val newHash = hashPin(legacyPin)
+            prefs.edit()
+                .putString("admin_pin_hash", newHash)
+                .remove("admin_pin") // Remove insecure key
+                .apply()
+            return newHash
+        }
+        
+        // No PIN found: return default hashed
+        // We do not save it here to keep prefs clean until first change, 
+        // but semantically the default is "1234"
+        return hashPin(DEFAULT_PIN)
     }
     
     private fun savePin(pin: String) {
         val prefs = getSharedPreferences("display_prefs", MODE_PRIVATE)
-        prefs.edit().putString("admin_pin", pin).commit()
+        // Always save as hash
+        val hashed = hashPin(pin)
+        prefs.edit()
+            .putString("admin_pin_hash", hashed)
+            .remove("admin_pin") // Ensure legacy is gone
+            .apply()
     }
     
     private fun showPinEntryDialog() {
@@ -1177,7 +1240,9 @@ class MainActivity : AppCompatActivity() {
         pinSubmitBtn.setOnClickListener {
             val enteredPin = "${pinDigit1.text}${pinDigit2.text}${pinDigit3.text}${pinDigit4.text}"
             if (enteredPin.length == 4) {
-                if (enteredPin == getPin()) {
+                // Hash input before comparison
+                val enteredHash = hashPin(enteredPin)
+                if (enteredHash == getPin()) {
                     dialog.dismiss()
                     currentPinDialog = null
                     showSettingsPanel()
