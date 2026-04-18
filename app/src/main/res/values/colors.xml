@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TV App Browser Design System Colors -->
+    <color name="primary_red">#E30613</color>
+    <color name="primary_red_dark">#B91C1C</color>
+    <color name="primary_red_light">#F87171</color>
+    
+    <color name="background_black">#050505</color>
+    <color name="surface_dark">#0A0A0A</color>
+    <color name="card_background">#0A0A0A</color>
+    
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#9CA3AF</color>
+    <color name="text_tertiary">#6B7280</color>
+    <color name="text_muted">#4B5563</color>
+    
+    <color name="border_subtle">#0D0D0D</color> <!-- rgba(255,255,255,0.05) over black -->
+    <color name="border_light">#1A1A1A</color> <!-- rgba(255,255,255,0.1) over black -->
+    <color name="border_medium">#333333</color> <!-- rgba(255,255,255,0.2) over black -->
+    
+    <color name="success_green">#22C55E</color>
+    <color name="warning_yellow">#EAB308</color>
+    <color name="error_red">#EF4444</color>
+    
+    <color name="glass_background">#991A1A1A</color>
+    <color name="glass_border">#1A1A1A</color>
+    
+    <color name="toggle_off">#374151</color>
+    <color name="transparent">#00000000</color>
+</resources>

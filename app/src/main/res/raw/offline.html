@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            background-color: #050505;
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-align: center;
+        }
+        .container {
+            background: #0A0A0A;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 48px;
+            box-shadow: 0 4px 60px rgba(227, 6, 19, 0.1);
+        }
+        .icon {
+            color: #E30613;
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            letter-spacing: -0.5px;
+        }
+        p {
+            color: #9CA3AF;
+            font-size: 14px;
+            margin: 0 0 32px 0;
+            line-height: 1.5;
+            max-width: 300px;
+        }
+        .button {
+            background-color: #E30613;
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 16px 32px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .button:hover {
+            background-color: #B91C1C;
+        }
+        .button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚠️</div>
+        <h1>Connection Lost</h1>
+        <p>The device is currently offline. We will automatically reconnect when the network is available.</p>
+        <button class="button" onclick="window.TVAppBrowser.retry()">Retry Now</button>
+    </div>
+</body>
+</html>

@@ -1,3 +1,29 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">TV App Browser</string>
+    <string name="version_text">v1.0</string>
+    <string name="default_url">https://www.google.com</string>
+    <string name="default_pin">1234</string>
+    
+    <string name="settings_title">TV App Browser</string>
+    <string name="settings_save_apply">SAVE &amp; APPLY</string>
+    <string name="settings_reset">RESET TO DEFAULTS</string>
+    
+    <string name="section_general">GENERAL</string>
+    <string name="section_security">SECURITY</string>
+    <string name="section_advanced">ADVANCED</string>
+    
+    <string name="label_url">Startup URL</string>
+    <string name="label_refresh_interval">Refresh Interval</string>
+    <string name="label_start_on_boot">Start on Boot</string>
+    <string name="label_kiosk_mode">Kiosk Mode</string>
+    <string name="label_javascript">JavaScript Enabled</string>
+    <string name="label_hardware_accel">Hardware Acceleration</string>
+    <string name="label_clear_cache">Clear Cache on Refresh</string>
+    <string name="label_zoom_level">Zoom Level</string>
+    <string name="label_pin">Exit PIN Code</string>
+    
+    <string name="error_title">Connection Error</string>
+    <string name="error_retry">RETRY NOW</string>
+    <string name="offline_text">OFFLINE</string>
+    <string name="pin_title">Enter PIN to Exit</string>
 </resources>

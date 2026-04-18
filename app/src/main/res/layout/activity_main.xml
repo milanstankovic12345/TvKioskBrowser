@@ -2,231 +2,98 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:background="@color/background_black">
 
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
+        android:layout_height="match_parent" />
 
-    <!-- Settings overlay, hidden by default; shown when back button is pressed -->
+    <!-- Offline Indicator Overlay -->
     <LinearLayout
-        android:id="@+id/settingsPanel"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center"
-        android:background="#CC000000"
+        android:id="@+id/offlineIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="24dp"
+        android:background="@drawable/offline_indicator_bg"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:visibility="gone">
 
-        <ScrollView
+        <View
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/bg_toggle_track_on"
+            android:backgroundTint="@color/error_red" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.1"
+            android:text="@string/offline_text"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Bookmark Overlay Layer -->
+    <FrameLayout
+        android:id="@+id/bookmarkOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6050505"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxHeight="800dp"
-            android:fillViewport="true">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:background="@android:color/white">
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center">
 
             <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Start URL"
-                android:textStyle="bold"
-                android:textColor="#000000" />
-
-            <EditText
-                android:id="@+id/inputUrl"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:hint="http://server/path"
-                android:textColor="#000000"
-                android:textColorHint="#66000000"
-                android:background="@drawable/focused_background"
-                android:padding="8dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:importantForAccessibility="yes"
-                android:contentDescription="Start URL input field"
-                android:nextFocusDown="@id/inputIntervalSec" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="12dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Refresh interval (seconds)"
-                android:textStyle="bold"
-                android:textColor="#000000" />
-
-            <EditText
-                android:id="@+id/inputIntervalSec"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:hint="300"
-                android:textColor="#000000"
-                android:textColorHint="#66000000"
-                android:background="@drawable/focused_background"
-                android:padding="8dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:importantForAccessibility="yes"
-                android:contentDescription="Refresh interval in seconds input field"
-                android:nextFocusUp="@id/inputUrl"
-                android:nextFocusDown="@id/seekZoom" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="16dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Webpage zoom"
-                android:textStyle="bold"
-                android:textColor="#000000" />
-
-            <TextView
-                android:id="@+id/textZoomValue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="100%"
-                android:textColor="#000000"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp" />
+                android:text="BOOKMARKS"
+                android:textColor="@color/text_primary"
+                android:textSize="24sp"
+                android:letterSpacing="0.2"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginBottom="32dp" />
 
-            <SeekBar
-                android:id="@+id/seekZoom"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="150"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:importantForAccessibility="yes"
-                android:contentDescription="Webpage zoom control"
-                android:nextFocusUp="@id/inputIntervalSec" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="16dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Recommended Sites"
-                android:textStyle="bold"
-                android:textColor="#000000" />
-
-            <HorizontalScrollView
-                android:id="@+id/recommendedSitesScrollView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:paddingVertical="8dp"
-                android:paddingHorizontal="4dp">
-
-                <LinearLayout
-                    android:id="@+id/recommendedSitesContainer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp" />
-            </HorizontalScrollView>
-
-            <Button
-                android:id="@+id/btnAddSite"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerMainBookmarks"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="+ Add New Site"
-                android:textColor="#000000"
-                android:layout_gravity="start"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/focused_button"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:importantForAccessibility="yes"
-                android:contentDescription="Add new recommended site button"
-                android:nextFocusUp="@id/seekZoom"
-                android:nextFocusDown="@id/btnChangePin" />
-
-            <Button
-                android:id="@+id/btnChangePin"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Change Administrator PIN"
-                android:textColor="#000000"
-                android:layout_gravity="start"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/focused_button"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:importantForAccessibility="yes"
-                android:contentDescription="Change administrator PIN button"
-                android:nextFocusUp="@id/btnAddSite"
-                android:nextFocusDown="@id/btnCancel" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="16dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="end"
-                android:layout_marginBottom="8dp">
+                android:clipToPadding="false"
+                android:padding="16dp" />
+                
+            <TextView
+                android:id="@+id/textNoBookmarks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No bookmarks found. Add one in Settings."
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
-                <Button
-                    android:id="@+id/btnCancel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Cancel"
-                    android:textColor="#000000"
-                    android:background="@drawable/focused_button"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:importantForAccessibility="yes"
-                    android:contentDescription="Cancel button"
-                    android:nextFocusUp="@id/btnAddSite"
-                    android:nextFocusRight="@id/btnSave" />
-
-                <View
-                    android:layout_width="12dp"
-                    android:layout_height="0dp" />
-
-                <Button
-                    android:id="@+id/btnSave"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Save"
-                    android:textColor="#000000"
-                    android:background="@drawable/focused_button"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:importantForAccessibility="yes"
-                    android:contentDescription="Save settings button"
-                    android:nextFocusUp="@id/btnAddSite"
-                    android:nextFocusLeft="@id/btnCancel" />
-            </LinearLayout>
-            
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="32dp" />
-            </LinearLayout>
-        </ScrollView>
-    </LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="Press BACK to cancel"
+                android:textColor="@color/text_tertiary"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </FrameLayout>
 
 </FrameLayout>

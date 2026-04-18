@@ -1,78 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:id="@+id/rootCard"
+    android:layout_width="280dp"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="6dp"
-    android:gravity="center"
-    android:background="@drawable/site_item_background"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_card"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:clickable="true"
-    android:elevation="4dp"
-    android:layout_marginBottom="2dp"
-    android:layout_marginEnd="12dp"
-    android:layout_marginStart="12dp"
-    android:layout_marginTop="4dp">
+    android:layout_marginEnd="16dp"
+    android:nextFocusRight="@+id/btnEdit">
 
-    <FrameLayout
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:background="@android:color/transparent"
-        android:padding="2dp">
-
-        <Button
-            android:id="@+id/btnSite"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:textSize="18sp"
-            android:textColor="#000000"
-            android:background="@drawable/site_button_with_shadow"
-            android:gravity="center"
-            android:padding="0dp"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:elevation="2dp"
-            android:importantForAccessibility="yes"
-            android:contentDescription="Open recommended site"
-            android:nextFocusUp="@id/btnSiteMenu"
-            android:nextFocusDown="@id/btnSiteMenu" />
-
-        <ImageButton
-            android:id="@+id/btnSiteMenu"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="top|end"
-            android:background="@drawable/edit_button_background"
-            android:src="@android:drawable/ic_menu_more"
-            android:contentDescription="Edit site options"
-            android:tint="#424242"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:clickable="true"
-            android:padding="4dp"
-            android:scaleType="fitCenter"
-            android:elevation="3dp"
-            android:importantForAccessibility="yes"
-            android:nextFocusUp="@id/btnSite"
-            android:nextFocusDown="@id/btnSite" />
-    </FrameLayout>
-
-    <TextView
-        android:id="@+id/textSiteName"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:textSize="9sp"
-        android:textColor="#000000"
-        android:maxWidth="80dp"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:lineSpacingExtra="2dp"
-        android:text="Site Name" />
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/textSiteName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Site Name" />
+
+        <TextView
+            android:id="@+id/textSiteUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="https://example.com" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btnEdit"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_icon_button"
+        android:src="@android:drawable/ic_menu_edit"
+        android:tint="@color/text_primary"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:clickable="true"
+        android:scaleType="centerInside"
+        android:padding="6dp"
+        android:nextFocusLeft="@id/rootCard"
+        android:nextFocusRight="@+id/btnDelete" />
+
+    <ImageButton
+        android:id="@+id/btnDelete"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_icon_button"
+        android:src="@android:drawable/ic_menu_delete"
+        android:tint="@color/text_primary"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:clickable="true"
+        android:scaleType="centerInside"
+        android:padding="6dp"
+        android:nextFocusLeft="@id/btnEdit" />
 
 </LinearLayout>
-

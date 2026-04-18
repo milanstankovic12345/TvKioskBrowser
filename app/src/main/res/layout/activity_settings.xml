@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_black"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@mipmap/ic_launcher" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="@string/settings_title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="20sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/version_text"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="24dp"
+            android:background="@color/border_light" />
+
+        <!-- Form Cards -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.1"
+                android:text="@string/section_general"
+                android:textColor="@color/text_tertiary"
+                android:textSize="10sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_url"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/inputUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input"
+                    android:fontFamily="monospace"
+                    android:inputType="textUri"
+                    android:padding="12dp"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:nextFocusDown="@+id/scrollInterval" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_refresh_interval"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <HorizontalScrollView
+                    android:id="@+id/scrollInterval"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:scrollbars="none"
+                    android:focusable="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:nextFocusUp="@+id/inputUrl"
+                    android:nextFocusDown="@+id/rowBoot">
+
+                    <LinearLayout
+                        android:id="@+id/layoutIntervalChips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="4dp" />
+                </HorizontalScrollView>
+            </LinearLayout>
+            
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="24dp"
+                android:background="@color/border_subtle" />
+
+            <!-- Toggles go here, injected programmatically or manually below -->
+            <include layout="@layout/item_setting_row" android:id="@+id/rowBoot" android:nextFocusUp="@+id/scrollInterval" android:nextFocusDown="@+id/rowKiosk" />
+            <include layout="@layout/item_setting_row" android:id="@+id/rowKiosk" android:nextFocusUp="@+id/rowBoot" android:nextFocusDown="@+id/rowJs" />
+            
+            <!-- Security & Advanced -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="16dp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.1"
+                android:text="@string/section_advanced"
+                android:textColor="@color/text_tertiary"
+                android:textSize="10sp" />
+                
+            <include layout="@layout/item_setting_row" android:id="@+id/rowJs" android:nextFocusUp="@+id/rowKiosk" android:nextFocusDown="@+id/rowHw" />
+            <include layout="@layout/item_setting_row" android:id="@+id/rowHw" android:nextFocusUp="@+id/rowJs" android:nextFocusDown="@+id/rowCache" />
+            <include layout="@layout/item_setting_row" android:id="@+id/rowCache" android:nextFocusUp="@+id/rowHw" android:nextFocusDown="@+id/scrollZoom" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_zoom_level"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <HorizontalScrollView
+                    android:id="@+id/scrollZoom"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:scrollbars="none"
+                    android:focusable="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:nextFocusUp="@+id/rowCache"
+                    android:nextFocusDown="@+id/inputPin">
+
+                    <LinearLayout
+                        android:id="@+id/layoutZoomChips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="4dp" />
+                </HorizontalScrollView>
+            </LinearLayout>
+            
+             <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_pin"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/inputPin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input"
+                    android:inputType="numberPassword"
+                    android:padding="12dp"
+                    android:maxLength="8"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:nextFocusUp="@+id/scrollZoom"
+                    android:nextFocusDown="@+id/recyclerBookmarks" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="24dp"
+                android:background="@color/border_subtle" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+            
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.1"
+                    android:text="BOOKMARKS"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="10sp" />
+                    
+                <Button
+                    android:id="@+id/btnAddBookmark"
+                    style="@style/Widget.TVAppBrowser.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="+ ADD"
+                    android:textSize="10sp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:nextFocusUp="@+id/recyclerBookmarks"
+                    android:nextFocusDown="@+id/btnSave" />
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerBookmarks"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:nestedScrollingEnabled="false"
+                android:orientation="horizontal"
+                android:nextFocusUp="@+id/inputPin"
+                android:nextFocusDown="@+id/btnAddBookmark" />        </LinearLayout>
+
+        <!-- Actions -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnReset"
+                style="@style/Widget.TVAppBrowser.Button.Secondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_reset"
+                android:nextFocusUp="@+id/btnAddBookmark"
+                android:nextFocusRight="@+id/btnSave" />
+
+            <Button
+                android:id="@+id/btnSave"
+                style="@style/Widget.TVAppBrowser.Button.Primary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="@string/settings_save_apply"
+                android:nextFocusUp="@+id/btnAddBookmark"
+                android:nextFocusLeft="@+id/btnReset" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
