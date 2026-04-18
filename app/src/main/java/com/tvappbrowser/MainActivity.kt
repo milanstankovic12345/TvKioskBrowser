@@ -22,6 +22,15 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.LinearLayout
+import android.widget.FrameLayout
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.transition.TransitionManager
+import android.transition.AutoTransition
 import android.widget.Toast
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
@@ -36,12 +45,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var offlineIndicator: LinearLayout
     private lateinit var networkMonitor: NetworkMonitor
     
-    // Bookmark overlay variables
-    private lateinit var bookmarkOverlay: android.widget.FrameLayout
-    private lateinit var recyclerMainBookmarks: androidx.recyclerview.widget.RecyclerView
-    private lateinit var textNoBookmarks: TextView
-    private var isOverlayOpen = false
+    // Browser bar views
+    private lateinit var browserBarContainer: LinearLayout
+    private lateinit var searchBarIcon: ImageView
+    private lateinit var searchBarProgress: ProgressBar
+    private lateinit var searchBarUrlInput: EditText
+    private lateinit var searchBarBookmarkBtn: ImageButton
+    private lateinit var searchBarSettingsBtn: ImageButton
     
+    private lateinit var bookmarkHelper: com.tvappbrowser.util.BookmarkPreferencesHelper
+    
+
     private val viewModel: SettingsViewModel by viewModels()
     private val handler = Handler(Looper.getMainLooper())
     
@@ -67,9 +81,18 @@ class MainActivity : AppCompatActivity() {
         
         webView = findViewById(R.id.webView)
         offlineIndicator = findViewById(R.id.offlineIndicator)
-        bookmarkOverlay = findViewById<android.widget.FrameLayout>(R.id.bookmarkOverlay)
-        recyclerMainBookmarks = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recyclerMainBookmarks)
-        textNoBookmarks = findViewById<TextView>(R.id.textNoBookmarks)
+        
+        browserBarContainer = findViewById(R.id.browserBarContainer)
+        searchBarIcon = findViewById(R.id.searchBarIcon)
+        searchBarProgress = findViewById(R.id.searchBarProgress)
+        searchBarUrlInput = findViewById(R.id.searchBarUrlInput)
+        searchBarBookmarkBtn = findViewById(R.id.searchBarBookmarkBtn)
+        searchBarSettingsBtn = findViewById(R.id.searchBarSettingsBtn)
+        
+
+        bookmarkHelper = com.tvappbrowser.util.BookmarkPreferencesHelper(this)
+        
+        setupBrowserBar()
         
         setupImmersiveMode()
         setupBackButtonHandling()
@@ -81,8 +104,10 @@ class MainActivity : AppCompatActivity() {
             
             // Kiosk blocking (partial via pinned mode fallback)
             if (settings.kioskMode) {
+                animateBrowserBar(false)
                 startLockTaskMode()
             } else {
+                animateBrowserBar(true)
                 stopLockTaskMode()
             }
         }
@@ -145,6 +170,149 @@ class MainActivity : AppCompatActivity() {
         
         // Show hint on first launch
         Toast.makeText(this, "Triple-tap any corner to open Settings", Toast.LENGTH_LONG).show()
+    }
+    
+    private fun setupBrowserBar() {
+        searchBarSettingsBtn.setOnClickListener { launchSettingsOrPin() }
+        
+        searchBarUrlInput.showSoftInputOnFocus = false
+        searchBarUrlInput.setOnClickListener { v ->
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+        }
+        
+        searchBarUrlInput.setOnEditorActionListener { v, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                val text = v.text.toString().trim()
+                if (text.isNotEmpty()) {
+                    if (text.contains(" ") || (!text.contains(".") && !text.startsWith("http"))) {
+                        // Search
+                        webView.loadUrl("https://www.google.com/search?q=${android.net.Uri.encode(text)}")
+                    } else if (!text.startsWith("http://") && !text.startsWith("https://")) {
+                        webView.loadUrl("https://$text")
+                    } else {
+                        webView.loadUrl(text)
+                    }
+                }
+                
+                // Hide keyboard and clear focus
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(v.windowToken, 0)
+                webView.requestFocus()
+                return@setOnEditorActionListener true
+            }
+            false
+        }
+        
+        searchBarUrlInput.setOnFocusChangeListener { v, hasFocus ->
+            if (!hasFocus) {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(v.windowToken, 0)
+            }
+        }
+        
+        searchBarBookmarkBtn.setOnClickListener {
+            handleBookmarkStarClick()
+        }
+    }
+    
+    private fun animateBrowserBar(visible: Boolean) {
+        if ((visible && browserBarContainer.visibility == View.VISIBLE) || 
+            (!visible && browserBarContainer.visibility == View.GONE)) return
+            
+        val transition = AutoTransition()
+        transition.duration = 300
+        transition.interpolator = androidx.interpolator.view.animation.FastOutSlowInInterpolator()
+        val root = findViewById<View>(android.R.id.content) as android.view.ViewGroup
+        TransitionManager.beginDelayedTransition(root, transition)
+        
+        browserBarContainer.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+    
+    private fun updateBookmarkStar(url: String?) {
+        if (url == null) return
+        val isBookmarked = bookmarkHelper.isBookmarked(url)
+        if (isBookmarked) {
+            searchBarBookmarkBtn.setImageResource(R.drawable.ic_star_filled)
+        } else {
+            searchBarBookmarkBtn.setImageResource(R.drawable.ic_star_outline)
+        }
+    }
+    
+    private fun handleBookmarkStarClick() {
+        // Quick scale animation
+        searchBarBookmarkBtn.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).withEndAction {
+            searchBarBookmarkBtn.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+        }.start()
+
+        val currentUrl = webView.url ?: return
+        val currentTitle = webView.title ?: currentUrl
+        val existingBookmark = bookmarkHelper.getBookmarkByUrl(currentUrl)
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_bookmark_entry, null)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert)
+            .setView(dialogView)
+            .create()
+            
+        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+
+        val inputName = dialogView.findViewById<EditText>(R.id.inputBookmarkName)
+        val inputUrlDialog = dialogView.findViewById<EditText>(R.id.inputBookmarkUrl)
+        val btnSave = dialogView.findViewById<android.widget.Button>(R.id.btnSaveBookmark)
+        val btnCancel = dialogView.findViewById<android.widget.Button>(R.id.btnCancel)
+        val btnDelete = dialogView.findViewById<android.widget.Button>(R.id.btnDelete)
+        val textTitle = dialogView.findViewById<TextView>(R.id.textDialogTitle)
+
+        inputName.showSoftInputOnFocus = false
+        inputUrlDialog.showSoftInputOnFocus = false
+        
+        val showKeyboard = View.OnClickListener { v ->
+            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(v, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+        inputName.setOnClickListener(showKeyboard)
+        inputUrlDialog.setOnClickListener(showKeyboard)
+
+        inputName.requestFocus()
+        inputName.setText(existingBookmark?.name ?: currentTitle)
+        inputUrlDialog.setText(existingBookmark?.url ?: currentUrl)
+
+        if (existingBookmark != null) {
+            textTitle.text = "Edit Bookmark"
+            btnDelete.visibility = View.VISIBLE
+            btnDelete.setOnClickListener {
+                bookmarkHelper.deleteBookmark(existingBookmark.id)
+                updateBookmarkStar(currentUrl)
+                Toast.makeText(this, "Bookmark removed", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+        } else {
+            textTitle.text = "Add Bookmark"
+        }
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnSave.setOnClickListener {
+            val name = inputName.text.toString().trim()
+            val url = inputUrlDialog.text.toString().trim()
+            if (name.isNotEmpty() && url.isNotEmpty()) {
+                if (existingBookmark != null) {
+                    bookmarkHelper.updateBookmark(com.tvappbrowser.model.Bookmark(existingBookmark.id, name, url))
+                } else {
+                    bookmarkHelper.addBookmark(com.tvappbrowser.model.Bookmark(java.util.UUID.randomUUID().toString(), name, url))
+                    Toast.makeText(this, "Bookmarked", Toast.LENGTH_SHORT).show()
+                }
+                updateBookmarkStar(url)
+                
+                // Force sync with viewmodel if it also caches it
+                viewModel.loadSettings()
+                
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this, "Please enter both Name and URL", Toast.LENGTH_SHORT).show()
+            }
+        }
+        dialog.show()
     }
     
     private fun showOfflinePage() {
@@ -216,6 +384,29 @@ class MainActivity : AppCompatActivity() {
         webSettings.textZoom = settings.zoomLevel
         
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                searchBarIcon.visibility = View.GONE
+                searchBarProgress.visibility = View.VISIBLE
+                searchBarUrlInput.setText(url)
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                searchBarProgress.visibility = View.GONE
+                searchBarIcon.visibility = View.VISIBLE
+                
+                if (url != null) {
+                    searchBarUrlInput.setText(url)
+                    if (url.startsWith("https://")) {
+                        searchBarIcon.setImageResource(R.drawable.ic_lock)
+                    } else {
+                        searchBarIcon.setImageResource(R.drawable.ic_globe)
+                    }
+                    updateBookmarkStar(url)
+                }
+            }
+            
             override fun onReceivedError(
                 view: WebView?,
                 request: WebResourceRequest?,
@@ -279,8 +470,10 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackButtonHandling() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (isOverlayOpen) {
-                    closeBookmarkOverlay()
+                val settings = viewModel.settings.value
+                if (settings != null && !settings.kioskMode) {
+                    finishAffinity()
+                    kotlin.system.exitProcess(0)
                 } else {
                     launchSettingsOrPin()
                 }
@@ -292,87 +485,73 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, PinActivity::class.java))
     }
 
-    private fun openBookmarkOverlay() {
-        if (isOverlayOpen) return
-        isOverlayOpen = true
-        bookmarkOverlay.visibility = View.VISIBLE
-        // Update adapter
-        val settings = viewModel.settings.value
-        val bookmarks = settings?.bookmarks ?: emptyList()
-        if (bookmarks.isEmpty()) {
-            textNoBookmarks.visibility = View.VISIBLE
-            recyclerMainBookmarks.visibility = View.GONE
-        } else {
-            textNoBookmarks.visibility = View.GONE
-            recyclerMainBookmarks.visibility = View.VISIBLE
-            recyclerMainBookmarks.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false)
-            recyclerMainBookmarks.adapter = BookmarkAdapter(bookmarks, { clickedBookmark ->
-                // onSiteClicked: Load URL, UPDATE App Start URL globally, and close
-                var urlToLoad = clickedBookmark.url
-                if (!urlToLoad.startsWith("http")) urlToLoad = "https://$urlToLoad"
-                webView.loadUrl(urlToLoad)
-                
-                // Override persistent Start URL with the clicked bookmark
-                val currentSettings = viewModel.settings.value
-                if (currentSettings != null) {
-                    val updatedSettings = currentSettings.copy(url = urlToLoad)
-                    viewModel.saveSettings(updatedSettings)
-                }
-                
-                closeBookmarkOverlay()
-            }, {
-                // onEditClicked: Does nothing in quick-launch overlay
-                closeBookmarkOverlay()
-            }, {
-                // onDeleteClicked: Does nothing in quick-launch overlay
-                closeBookmarkOverlay()
-            })
-            recyclerMainBookmarks.requestFocus()
-        }
-    }
-
-    private fun closeBookmarkOverlay() {
-        isOverlayOpen = false
-        bookmarkOverlay.visibility = View.GONE
-        webView.requestFocus()
-    }
-
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        // If overlay is open, intercept EVERYTHING except exactly what we handle
-        if (isOverlayOpen) {
-            if (event.action == android.view.KeyEvent.ACTION_DOWN) {
-                when (event.keyCode) {
-                    android.view.KeyEvent.KEYCODE_DPAD_LEFT,
-                    android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                        // Allow navigation within the recycler view
-                        return super.dispatchKeyEvent(event)
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+            val focusedView = currentFocus
+            when (focusedView?.id) {
+                R.id.webView -> {
+                    when (event.keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                            if (webView.scrollY > 0) {
+                                return super.dispatchKeyEvent(event)
+                            } else {
+                                searchBarUrlInput.requestFocus()
+                                return true
+                            }
+                        }
                     }
-                    android.view.KeyEvent.KEYCODE_DPAD_CENTER,
-                    android.view.KeyEvent.KEYCODE_ENTER -> {
-                        // Allow enter/click
-                        return super.dispatchKeyEvent(event)
+                }
+                R.id.searchBarUrlInput -> {
+                    when (event.keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                            searchBarUrlInput.setSelection(0)
+                            return true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            webView.requestFocus()
+                            return true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            searchBarBookmarkBtn.requestFocus()
+                            return true
+                        }
                     }
-                    android.view.KeyEvent.KEYCODE_BACK -> {
-                        closeBookmarkOverlay()
-                        return true
+                }
+                R.id.searchBarBookmarkBtn -> {
+                    when (event.keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_UP -> return true
+                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            webView.requestFocus()
+                            return true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            searchBarUrlInput.requestFocus()
+                            return true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            searchBarSettingsBtn.requestFocus()
+                            return true
+                        }
                     }
-                    else -> return true // Block everything else!
+                }
+                R.id.searchBarSettingsBtn -> {
+                    when (event.keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_UP -> return true
+                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            webView.requestFocus()
+                            return true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            searchBarBookmarkBtn.requestFocus()
+                            return true
+                        }
+                    }
                 }
             }
-            return super.dispatchKeyEvent(event)
         }
-
-        // If overlay is CLOSED, intercept DPAD_UP and DPAD_DOWN to open it.
-        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
-            if (event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP || 
-                event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
-                openBookmarkOverlay()
-                return true
-            }
-        }
-        
         return super.dispatchKeyEvent(event)
     }
+
 
     private fun startLockTaskMode() {
         try {

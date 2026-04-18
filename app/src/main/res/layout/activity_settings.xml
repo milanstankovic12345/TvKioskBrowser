@@ -270,8 +270,20 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
-            android:gravity="end"
             android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnExit"
+                style="@style/Widget.TVAppBrowser.Button.Secondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/error_red"
+                android:text="Exit App" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1" />
 
             <Button
                 android:id="@+id/btnReset"
@@ -280,6 +292,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/settings_reset"
                 android:nextFocusUp="@+id/btnAddBookmark"
+                android:nextFocusLeft="@+id/btnExit"
                 android:nextFocusRight="@+id/btnSave" />
 
             <Button

@@ -55,6 +55,12 @@ class SettingsActivity : AppCompatActivity() {
             val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
             imm.showSoftInput(inputUrl, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
         }
+        
+        inputPin.showSoftInputOnFocus = false
+        inputPin.setOnClickListener {
+            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(inputPin, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
 
         // Setup rows
         setupRow(R.id.rowBoot, "Start on Boot") { switchBoot = it }
@@ -65,6 +71,11 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnSave).setOnClickListener {
             saveAndApply()
+        }
+
+        findViewById<Button>(R.id.btnExit).setOnClickListener {
+            finishAffinity()
+            kotlin.system.exitProcess(0)
         }
 
         findViewById<Button>(R.id.btnReset).setOnClickListener {
@@ -244,8 +255,14 @@ class SettingsActivity : AppCompatActivity() {
         val recycler = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recyclerBookmarks)
         recycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false)
         recycler.adapter = BookmarkAdapter(settings.bookmarks, { bookmark ->
-            // In settings, clicking a site is identical to clicking menu - edit it
-            showBookmarkDialog(bookmark)
+            // Play bookmark (update URL and exit settings)
+            val currentSettings = viewModel.settings.value
+            if (currentSettings != null) {
+                var urlToLoad = bookmark.url
+                if (!urlToLoad.startsWith("http")) urlToLoad = "https://$urlToLoad"
+                inputUrl.setText(urlToLoad)
+                saveAndApply()
+            }
         }, { bookmark ->
             // Edit
             showBookmarkDialog(bookmark)
@@ -272,6 +289,16 @@ class SettingsActivity : AppCompatActivity() {
         val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
         val btnDelete = dialogView.findViewById<Button>(R.id.btnDelete)
         val textTitle = dialogView.findViewById<TextView>(R.id.textDialogTitle)
+
+        inputName.showSoftInputOnFocus = false
+        inputUrlDialog.showSoftInputOnFocus = false
+        
+        val showKeyboard = android.view.View.OnClickListener { v ->
+            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(v, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+        inputName.setOnClickListener(showKeyboard)
+        inputUrlDialog.setOnClickListener(showKeyboard)
 
         if (existingBookmark != null) {
             textTitle.text = "Edit Bookmark"

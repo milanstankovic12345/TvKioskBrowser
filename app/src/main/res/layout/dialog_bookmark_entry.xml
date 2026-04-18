@@ -36,6 +36,7 @@
         android:textColorHint="@color/text_muted"
         android:singleLine="true"
         android:maxLines="1"
+        android:nextFocusDown="@+id/inputBookmarkUrl"
         android:scrollHorizontally="true" />
 
     <TextView
@@ -60,6 +61,7 @@
         android:inputType="textUri"
         android:singleLine="true"
         android:maxLines="1"
+        android:nextFocusDown="@+id/btnCancel"
         android:scrollHorizontally="true" />
 
     <LinearLayout
@@ -74,6 +76,7 @@
             style="@style/Widget.TVAppBrowser.Button.Secondary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:nextFocusRight="@+id/btnDelete"
             android:text="CANCEL" />
             
         <Button
@@ -84,6 +87,8 @@
             android:layout_marginStart="8dp"
             android:textColor="@color/error_red"
             android:visibility="gone"
+            android:nextFocusLeft="@+id/btnCancel"
+            android:nextFocusRight="@+id/btnSaveBookmark"
             android:text="DELETE" />
 
         <Button
@@ -92,6 +97,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:nextFocusLeft="@+id/btnDelete"
             android:text="SAVE" />
     </LinearLayout>
 </LinearLayout>

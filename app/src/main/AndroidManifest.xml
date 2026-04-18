@@ -38,6 +38,7 @@
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:windowSoftInputMode="stateAlwaysHidden"
             android:theme="@style/Theme.TVAppBrowser">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -51,6 +52,7 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden"
             android:theme="@style/Theme.TVAppBrowser.Settings" />
 
         <activity
