@@ -258,8 +258,7 @@ class SettingsActivity : AppCompatActivity() {
             // Play bookmark (update URL and exit settings)
             val currentSettings = viewModel.settings.value
             if (currentSettings != null) {
-                var urlToLoad = bookmark.url
-                if (!urlToLoad.startsWith("http")) urlToLoad = "https://$urlToLoad"
+                val urlToLoad = com.tvappbrowser.util.UrlHelper.normalizeUrl(bookmark.url)
                 inputUrl.setText(urlToLoad)
                 saveAndApply()
             }

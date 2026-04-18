@@ -67,6 +67,8 @@ class MainActivity : AppCompatActivity() {
     private var reloadIntervalRunnable: Runnable? = null
     
     private var isOffline = false
+    
+    private var pendingLocalUrl: String? = null
 
     @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -185,14 +187,8 @@ class MainActivity : AppCompatActivity() {
             if (actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
                 val text = v.text.toString().trim()
                 if (text.isNotEmpty()) {
-                    if (text.contains(" ") || (!text.contains(".") && !text.startsWith("http"))) {
-                        // Search
-                        webView.loadUrl("https://www.google.com/search?q=${android.net.Uri.encode(text)}")
-                    } else if (!text.startsWith("http://") && !text.startsWith("https://")) {
-                        webView.loadUrl("https://$text")
-                    } else {
-                        webView.loadUrl(text)
-                    }
+                    val normalized = com.tvappbrowser.util.UrlHelper.normalizeUrl(text)
+                    loadUrlWithPermissionCheck(normalized)
                 }
                 
                 // Hide keyboard and clear focus
@@ -357,7 +353,11 @@ class MainActivity : AppCompatActivity() {
         
         webSettings.javaScriptEnabled = settings.javascriptEnabled
         webSettings.domStorageEnabled = true
-        webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        webSettings.allowFileAccess = true
+        webSettings.allowContentAccess = true
+        webSettings.allowFileAccessFromFileURLs = true
+        webSettings.allowUniversalAccessFromFileURLs = false
         
         if (settings.clearCache) {
             webSettings.cacheMode = WebSettings.LOAD_NO_CACHE
@@ -407,6 +407,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val urlObj = request?.url ?: return false
+                val urlStr = urlObj.toString()
+                
+                if (urlStr.startsWith("file://")) {
+                    if (!com.tvappbrowser.util.UrlHelper.isSafeLocalUrl(urlStr)) {
+                        view?.loadUrl(getSecurityErrorDataUrl())
+                        return true
+                    }
+                    return false
+                }
+                return false
+            }
+
             override fun onReceivedError(
                 view: WebView?,
                 request: WebResourceRequest?,
@@ -414,8 +428,12 @@ class MainActivity : AppCompatActivity() {
             ) {
                 super.onReceivedError(view, request, error)
                 // If it's a main frame error and we are actually connected
-                if (request?.isForMainFrame == true && !isOffline) {
-                    showOfflinePage()
+                if (request?.isForMainFrame == true) {
+                    if (request.url?.scheme == "file") {
+                        view?.loadUrl(getNotFoundErrorDataUrl(request.url?.toString() ?: "Unknown file"))
+                    } else if (!isOffline) {
+                        showOfflinePage()
+                    }
                 }
             }
 
@@ -446,8 +464,8 @@ class MainActivity : AppCompatActivity() {
         // Initial load
         val currentUrl = webView.url
         if (currentUrl == null || !currentUrl.contains(settings.url)) {
-            val urlToLoad = if (!settings.url.startsWith("http")) "https://${settings.url}" else settings.url
-            webView.loadUrl(urlToLoad)
+            val urlToLoad = com.tvappbrowser.util.UrlHelper.normalizeUrl(settings.url)
+            loadUrlWithPermissionCheck(urlToLoad)
         }
     }
 
@@ -574,6 +592,13 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         setupImmersiveMode()
         viewModel.loadSettings()
+        
+        pendingLocalUrl?.let { url ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && android.os.Environment.isExternalStorageManager()) {
+                webView.loadUrl(url)
+                pendingLocalUrl = null
+            }
+        }
     }
     
     override fun onDestroy() {
@@ -581,5 +606,105 @@ class MainActivity : AppCompatActivity() {
         networkMonitor.stopMonitoring()
         reloadIntervalRunnable?.let { handler.removeCallbacks(it) }
         webView.destroy()
+    }
+
+    private fun loadUrlWithPermissionCheck(url: String) {
+        if (url.startsWith("file:///sdcard/") || url.startsWith("file:///storage/") || url.startsWith("file:///mnt/")) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (!android.os.Environment.isExternalStorageManager()) {
+                    pendingLocalUrl = url
+                    showPermissionExplanationDialog {
+                        val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                        intent.data = android.net.Uri.parse("package:$packageName")
+                        startActivity(intent)
+                    }
+                    return
+                }
+            } else {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    pendingLocalUrl = url
+                    showPermissionExplanationDialog {
+                        androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE), 1001)
+                    }
+                    return
+                }
+            }
+        }
+        webView.loadUrl(url)
+    }
+
+    private fun showPermissionExplanationDialog(onContinue: () -> Unit) {
+        androidx.appcompat.app.AlertDialog.Builder(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert)
+            .setTitle("Permission Required")
+            .setMessage("This app needs access to read local files from your storage.")
+            .setPositiveButton("Continue") { _, _ -> onContinue() }
+            .setNegativeButton("Cancel") { _, _ -> 
+                pendingLocalUrl = null
+                webView.loadUrl(getSecurityErrorDataUrl()) 
+            }
+            .show()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                pendingLocalUrl?.let { webView.loadUrl(it) }
+            } else {
+                webView.loadUrl(getSecurityErrorDataUrl())
+            }
+            pendingLocalUrl = null
+        }
+    }
+
+    private val securityErrorHtml = """
+        <html>
+        <head>
+            <style>
+                body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: Inter, sans-serif; background: #050505; }
+                .container { text-align: center; }
+                .title { color: white; font-size: 18px; font-weight: bold; margin-top: 16px; margin-bottom: 8px; }
+                .subtitle { color: #71717A; font-size: 14px; margin-bottom: 16px; }
+                .note { color: #52525B; font-size: 11px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E30613" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                <div class="title">Access Blocked</div>
+                <div class="subtitle">This local path is restricted for security reasons.</div>
+                <div class="note">Paths containing '..' or outside allowed directories are not permitted.</div>
+            </div>
+        </body>
+        </html>
+    """.trimIndent()
+
+    private fun getNotFoundErrorDataUrl(path: String): String {
+        val html = """
+            <html>
+            <head>
+                <style>
+                    body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: Inter, sans-serif; background: #050505; }
+                    .container { text-align: center; max-width: 80%; }
+                    .title { color: white; font-size: 18px; font-weight: bold; margin-top: 16px; margin-bottom: 8px; }
+                    .subtitle { color: #71717A; font-size: 12px; font-family: monospace; margin-bottom: 16px; word-break: break-all; }
+                    .note { color: #52525B; font-size: 11px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><circle cx="12" cy="14" r="2"></circle><line x1="12" y1="18" x2="12" y2="18.01"></line></svg>
+                    <div class="title">File Not Found</div>
+                    <div class="subtitle">${android.text.TextUtils.htmlEncode(path)}</div>
+                    <div class="note">Check that the file exists and the path is correct.</div>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+        return "data:text/html;charset=utf-8," + android.net.Uri.encode(html)
+    }
+
+    private fun getSecurityErrorDataUrl(): String {
+        return "data:text/html;charset=utf-8," + android.net.Uri.encode(securityErrorHtml)
     }
 }
